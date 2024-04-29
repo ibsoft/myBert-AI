@@ -1,43 +1,48 @@
 import torch
-from transformers import BertForQuestionAnswering, BertTokenizer
+from transformers import AutoTokenizer, BertForQuestionAnswering
 
-# Load the fine-tuned model and tokenizer
-model_path = "finetuned_model"
-model = BertForQuestionAnswering.from_pretrained(model_path)
-tokenizer = BertTokenizer.from_pretrained(model_path)
+# Load the fine-tuned model
+model_path = "finetuned_model/BertFinetuned.model"
+model = torch.load(model_path)
 
-# Define a function to answer questions
-def answer_question(question, context):
-    inputs = tokenizer.encode_plus(question, context, return_tensors='pt', max_length=512, truncation=True)
-    input_ids = inputs["input_ids"].to(model.device)
-    attention_mask = inputs["attention_mask"].to(model.device)
+# Set the device
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model.to(device)
+
+# Load the tokenizer
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+
+def chatbot(query, context):
+    # Tokenize the input
+    inputs = tokenizer(context, query, return_tensors="pt", truncation=True, padding=True)
     
-    # Get the predicted answer span
+    # Forward pass through the model
     with torch.no_grad():
-        outputs = model(input_ids, attention_mask=attention_mask)
-        start_scores = outputs.start_logits
-        end_scores = outputs.end_logits
+        outputs = model(**inputs)
     
-    # Get the most likely answer span
-    start_idx = torch.argmax(start_scores)
-    end_idx = torch.argmax(end_scores) + 1
-    answer = tokenizer.decode(inputs["input_ids"][0][start_idx:end_idx])
+    # Get the predicted start and end positions
+    start_logits = outputs.start_logits
+    end_logits = outputs.end_logits
+    start_index = torch.argmax(start_logits)
+    end_index = torch.argmax(end_logits)
+    
+    # Print tokens and logits
+    print("Tokens:", tokenizer.convert_ids_to_tokens(inputs["input_ids"][0]))
+    print("Start Logits:", start_logits)
+    print("End Logits:", end_logits)
+    
+    # Get the answer span
+    answer_tokens = inputs["input_ids"][0][start_index : end_index + 1]
+    answer = tokenizer.decode(answer_tokens)
     
     return answer
 
-# Define a function to interact with the chatbot
-def chat():
-    print("Welcome to the Chatbot! Ask me anything or type 'exit' to end the conversation.")
-    while True:
-        user_input = input("You: ")
-        if user_input.lower() == 'exit':
-            print("Chatbot: Goodbye!")
-            break
-        else:
-            context = user_input
-            question = input("What do you want to ask about? ")
-            answer = answer_question(question, context)
-            print("Chatbot:", answer)
+# Example usage
+context = "Albert Einstein was a German-born theoretical physicist who developed the theory of relativity."
+query = "Who developed the theory of relativity?"
+answer = chatbot(query, context)
+print("Answer:", answer)
 
-# Start the chat
-chat()
+
+
+

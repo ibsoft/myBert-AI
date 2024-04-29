@@ -8,11 +8,12 @@ import matplotlib.pyplot as plt
 from transformers import AdamW
 import time
 import matplotlib.pyplot as plt
+from transformers import AutoTokenizer,AdamW,BertForQuestionAnswering
 import logging
 
 logging.basicConfig(
     format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
-logging.getLogger("haystack").setLevel(logging.ERROR)
+logging.getLogger("torch").setLevel(logging.ERROR)
 
 path = Path('data/train-v2.0.json')
 
@@ -106,7 +107,7 @@ for answer, text in zip(val_answers, val_texts):
         answer['answer_start'] = start_idx - 2
         answer['answer_end'] = end_idx - 2   
 
-from transformers import AutoTokenizer,AdamW,BertForQuestionAnswering
+
 tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
 train_encodings = tokenizer(train_texts, train_queries, truncation=True, padding=True)
@@ -171,7 +172,7 @@ model = BertForQuestionAnswering.from_pretrained('bert-base-uncased').to(device)
 optim = AdamW(model.parameters(), lr=5e-5)
 
 # Define the number of epochs
-epochs = 20
+epochs = 500
 
 
 whole_train_eval_time = time.time()
